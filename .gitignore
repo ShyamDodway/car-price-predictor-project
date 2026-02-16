@@ -2,6 +2,5 @@ venv/
 venv311/
 __pycache__/
 *.pyc
-*.pkl
 *.sql
 .env
