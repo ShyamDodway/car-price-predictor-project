@@ -1,118 +1,48 @@
 from fastapi import FastAPI
-import pymysql
+from pydantic import BaseModel
 import joblib
-import pandas as pd
-import os
-from datetime import datetime
 
-app = FastAPI(title="Vehicle Inventory ML API")
+app = FastAPI(title="Car Price Prediction API")
 
-# ==============================
-# LOAD MODEL FILES
-# ==============================
+# Load trained model + encoders
 model = joblib.load("models/car_price_model.pkl")
 le_name = joblib.load("models/le_name.pkl")
 le_fuel = joblib.load("models/le_fuel.pkl")
 le_trans = joblib.load("models/le_trans.pkl")
 
-# ==============================
-# DB CONNECTION
-# ==============================
-def get_connection():
-    return pymysql.connect(
-        host="localhost",
-        user="root",
-        password="shyam",
-        database="vehicle_inventory",
-        cursorclass=pymysql.cursors.DictCursor
-    )
+# Request body schema
+class CarInput(BaseModel):
+    year: int
+    name: str
+    fuel_type: str
+    transmission: str
 
-# ====================================================
-# 1️⃣ GET /vehicles  (Assignment requirement)
-# ====================================================
-@app.get("/vehicles")
-def get_vehicles():
-    conn = get_connection()
-    cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT id, name, year, fuel_type, transmission, price 
-        FROM vehicles
-        WHERE status='active'
-        LIMIT 50
-    """)
+@app.get("/")
+def home():
+    return {"message": "Car Price Prediction API is live"}
 
-    data = cursor.fetchall()
-    conn.close()
 
-    return {"vehicles": data}
-
-# ====================================================
-# 2️⃣ GET /vehicles/{id}/predict  ⭐ VERY IMPORTANT
-# ====================================================
-@app.get("/vehicles/{vehicle_id}/predict")
-def predict_vehicle_price(vehicle_id:int):
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT name, year, fuel_type, transmission, price 
-        FROM vehicles
-        WHERE id=%s
-    """, (vehicle_id,))
-
-    car = cursor.fetchone()
-    conn.close()
-
-    if not car:
-        return {"error": "Vehicle not found"}
+@app.post("/predict")
+def predict(data: CarInput):
 
     try:
-        df = pd.DataFrame([{
-            "name": le_name.transform([car["name"]])[0],
-            "year": car["year"],
-            "fuel_type": le_fuel.transform([car["fuel_type"]])[0],
-            "transmission": le_trans.transform([car["transmission"]])[0]
-        }])
+        # Encode categorical values
+        name_encoded = le_name.transform([data.name])[0]
+        fuel_encoded = le_fuel.transform([data.fuel_type])[0]
+        trans_encoded = le_trans.transform([data.transmission])[0]
 
-        predicted_price = model.predict(df)[0]
+        # Model expects numeric features
+        features = [[
+            data.year,
+            name_encoded,
+            fuel_encoded,
+            trans_encoded
+        ]]
 
-        return {
-            "vehicle": car,
-            "predicted_price": int(predicted_price)
-        }
+        prediction = model.predict(features)[0]
 
-    except:
-        return {"error": "Model could not predict this vehicle"}
+        return {"predicted_price": int(prediction)}
 
-# ====================================================
-# 3️⃣ GET /sync-status
-# ====================================================
-@app.get("/sync-status")
-def sync_status():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT MAX(date_scrapped) as last_sync FROM vehicles")
-    result = cursor.fetchone()
-    conn.close()
-
-    return {
-        "last_sync_date": result["last_sync"],
-        "status": "successful"
-    }
-
-# ====================================================
-# 4️⃣ POST /trigger-sync
-# ====================================================
-@app.post("/trigger-sync")
-def trigger_sync():
-
-    # run scraper manually
-    os.system("python main.py")
-
-    # retrain model after sync
-    os.system("python ml_model.py")
-
-    return {"message": "Manual sync + retraining triggered"}
+    except Exception as e:
+        return {"error": str(e)}
