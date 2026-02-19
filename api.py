@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import Form
 import joblib
 from datetime import datetime
 
@@ -20,19 +20,8 @@ le_fuel = joblib.load("models/le_fuel.pkl")
 le_trans = joblib.load("models/le_trans.pkl")
 
 
-# -----------------------------
-# Request schema
-# -----------------------------
-class CarInput(BaseModel):
-    year: int
-    name: str
-    fuel_type: str
-    transmission: str
-
-
-# -----------------------------
 # Home
-# -----------------------------
+
 @app.get("/")
 def home():
     return {
@@ -53,20 +42,25 @@ def get_vehicles():
 # PREDICT PRICE FOR VEHICLE
 # -----------------------------
 @app.post("/predict")
-def predict(data: CarInput):
-
+def predict(
+    year: int = Form(...),
+    name: str = Form(...),
+    fuel_type: str = Form(...),
+    transmission: str = Form(...)
+):
     try:
-        name_encoded = le_name.transform([data.name])[0]
-        fuel_encoded = le_fuel.transform([data.fuel_type])[0]
-        trans_encoded = le_trans.transform([data.transmission])[0]
+        name_encoded = le_name.transform([name])[0]
+        fuel_encoded = le_fuel.transform([fuel_type])[0]
+        trans_encoded = le_trans.transform([transmission])[0]
 
-        features = [[data.year, name_encoded, fuel_encoded, trans_encoded]]
+        features = [[year, name_encoded, fuel_encoded, trans_encoded]]
         prediction = model.predict(features)[0]
 
         return {"predicted_price": int(prediction)}
 
     except Exception as e:
         return {"error": str(e)}
+
 
 
 # -----------------------------
