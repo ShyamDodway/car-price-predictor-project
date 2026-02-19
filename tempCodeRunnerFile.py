@@ -1,1 +1,0 @@
-price = vehicle.get('salePrice', "")
