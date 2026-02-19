@@ -30,6 +30,10 @@ le_trans = LabelEncoder()
 df['name'] = le_name.fit_transform(df['name'])
 df['fuel_type'] = le_fuel.fit_transform(df['fuel_type'])
 df['transmission'] = le_trans.fit_transform(df['transmission'])
+
+
+
+
 X = df.drop("price", axis=1)
 y = df["price"]
 

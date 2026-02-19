@@ -12,12 +12,7 @@ import subprocess
 DB_HOST = "localhost"
 DB_USER = "root"
 DB_PASSWORD = "shyam"
-DB_NAME = "vehicle_inventory"
-
-
-
-
-
+DB_NAME = "vehicle_inventory_data"
 
 
 # ======================================
@@ -28,7 +23,7 @@ import subprocess
 os.makedirs("data", exist_ok=True)
 
 # file where backup will be saved
-dump_file = "data/vehicle_inventory_dump.sql"
+dump_file = "data/vehicle_inventory_data.sql"
 
 # full path of mysqldump
 MYSQLDUMP_PATH = r"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe"
@@ -222,17 +217,27 @@ for page in range(1, total_pages + 1):
         current_scraped_vins.add(vin_num)
 
         vehicle_id = vehicle.get('vehicleId', "")
-        listing_url = f"https://www.repentignychevrolet.com/en/used-inventory/details/{vehicle_id}"
+
+        listing_url = f"https://www.repentignychevrolet.com/en/used-inventory{vehicle_id}"
         year = vehicle.get('year', "")
         name = f"{vehicle.get('make', {}).get('name','')} {vehicle.get('model', {}).get('name','')}"
         price = vehicle.get('salePrice', "")
         transmission = vehicle.get('transmission', "")
         fuel_type = vehicle.get('fuel', {}).get('name', "")
-        website_url = "https://www.repentignychevrolet.com/en/used-inventory"
+        website_url = "https://www.repentignychevrolet.com/en/repentingy-chevrolet-used-inventory"
         metadata = json.dumps(vehicle)
 
         milage_in_city = ""
         milage_in_highway = ""
+        
+        consumption_list = vehicle.get("consumption", [])
+
+        for item in consumption_list:
+            if item.get("consumptionType") == "IN_CITY":
+                milage_in_city = item.get("consumption", "")
+
+            if item.get("consumptionType") == "ON_HIGHWAY":
+                milage_in_highway = item.get("consumption", "")
 
         # Date & Time (updated every run)
         now = datetime.now()
