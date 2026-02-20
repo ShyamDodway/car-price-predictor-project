@@ -97,4 +97,28 @@ Check sync status
 pip install -r requirements.txt
 python app.py
 
+##  Docker Support
+
+This project supports containerized deployment using Docker.
+
+###  Build Docker Image
+
+```
+docker build -t car-price-api .
+```
+
+###  Run Docker Container
+
+```
+docker run -p 8000:8000 car-price-api
+```
+
+After running the container, open:
+
+```
+http://localhost:8000/docs
+```
+
+This will open the interactive FastAPI Swagger documentation.
+
 
